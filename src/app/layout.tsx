@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: 'My Navigation App',
+    title: 'atom',
     description: 'A navigation app built with Next.js and TypeScript',
 };
 
