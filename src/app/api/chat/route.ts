@@ -4,7 +4,7 @@ export async function POST(request: Request) {
     const { message } = await request.json();
 
     try {
-        console.log("dddd")
+
         // 调用 DeepSeek 模型的 API
         const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
             method: 'POST',

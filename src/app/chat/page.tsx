@@ -1,52 +1,70 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
-import { FaPaperPlane } from 'react-icons/fa';
+import { FaPaperPlane, FaSpinner } from 'react-icons/fa';
+import { sendMessage } from '../sercices/chatService';
 
 interface Message {
     id: number;
     text: string;
     sender: 'user' | 'bot';
+    isLoading?: boolean;
 }
 
 export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
 
     useEffect(() => {
-        scrollToBottom();
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (inputText.trim() === '') return;
+        if (inputText.trim() === '' || isLoading) return;
 
+        setIsLoading(true);
         const userMessage: Message = {
             id: messages.length + 1,
             text: inputText,
             sender: 'user',
+            isLoading: true,
         };
 
         setMessages((prevMessages) => [...prevMessages, userMessage]);
         setInputText('');
 
         try {
-            // 调用 API 路由
-            const response = await axios.post('/api/chat', { message: inputText });
+            const reply = await sendMessage(inputText);
             const botMessage: Message = {
                 id: messages.length + 2,
-                text: response.data.reply,
+                text: reply,
                 sender: 'bot',
             };
+            setMessages((prevMessages) => [
+                ...prevMessages.filter((msg) => msg.id !== userMessage.id), // 移除旧的加载状态消息
+                { ...userMessage, isLoading: false }, // 更新为完成状态
+                botMessage,
+            ]);
 
-            setMessages((prevMessages) => [...prevMessages, botMessage]);
         } catch (error) {
             console.error('Error sending message:', error);
+            // 如果出错，移除加载状态并显示错误消息
+            setMessages((prevMessages) => [
+                ...prevMessages.filter((msg) => msg.id !== userMessage.id),
+                { ...userMessage, isLoading: false },
+                {
+                    id: messages.length + 2,
+                    text: '服务器繁忙，请稍后再试。',
+                    sender: 'bot',
+                },
+            ]);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -57,15 +75,19 @@ export default function ChatPage() {
                     <div
                         key={message.id}
                         className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'
-                            } mb-2`}
+                            } mb-2 message-bubble`}
                     >
                         <div
                             className={`max-w-xs md:max-w-md p-3 rounded-lg ${message.sender === 'user'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-200 text-gray-800'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 text-gray-800'
                                 }`}
                         >
+
                             {message.text}
+                            {message.isLoading && (
+                                <FaSpinner className="animate-spin ml-2" /> // 加载动画
+                            )}
                         </div>
                     </div>
                 ))}
@@ -86,7 +108,8 @@ export default function ChatPage() {
                 />
                 <button
                     onClick={handleSendMessage}
-                    className="p-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus:outline-none"
+                    disabled={isLoading}
+                    className="p-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus:outline-none disabled:bg-gray-400"
                 >
                     <FaPaperPlane />
                 </button>
